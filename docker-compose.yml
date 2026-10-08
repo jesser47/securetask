@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    image: securetask:latest
+    ports:
+      - "5000:5000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?Définir SECRET_KEY dans le fichier .env}
+      DATABASE_URL: sqlite:////app/instance/securetask.db
+    volumes:
+      - securetask-data:/app/instance
+    restart: unless-stopped
+
+volumes:
+  securetask-data:

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">Utilisateurs</h1>
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>ID</th><th>Nom d'utilisateur</th><th>Email</th><th>Rôle</th><th>Tâches</th><th>Inscrit le</th></tr></thead>
+      <tbody>
+        {% for user, task_count in rows %}
+        <tr>
+          <td>{{ user.id }}</td>
+          <td>{{ user.username }}</td>
+          <td>{{ user.email }}</td>
+          <td><span class="badge text-bg-{{ 'warning' if user.is_admin else 'secondary' }}">{{ user.role }}</span></td>
+          <td>{{ task_count }}</td>
+          <td>{{ user.created_at.strftime('%d/%m/%Y') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

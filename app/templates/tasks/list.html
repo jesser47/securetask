@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, priority_badge %}
+{% block title %}Mes tâches{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Mes tâches</h1>
+  <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">Nouvelle tâche</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-6">
+    <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Rechercher une tâche..." maxlength="100">
+  </div>
+  <div class="col-md-3">
+    <select name="status" class="form-select">
+      <option value="">Tous les statuts</option>
+      {% for value, label in STATUS_CHOICES %}
+      <option value="{{ value }}" {{ 'selected' if value == status }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3 d-flex gap-2">
+    <button type="submit" class="btn btn-outline-primary">Filtrer</button>
+    <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-outline-secondary">Réinitialiser</a>
+  </div>
+</form>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>Titre</th><th>Statut</th><th>Priorité</th><th>Mise à jour</th><th class="text-end">Actions</th></tr></thead>
+      <tbody>
+        {% for task in tasks %}
+        <tr>
+          <td>
+            <div class="fw-semibold">{{ task.title }}</div>
+            {% if task.description %}<div class="text-muted small text-truncate task-desc">{{ task.description }}</div>{% endif %}
+          </td>
+          <td>{{ status_badge(task.status) }}</td>
+          <td>{{ priority_badge(task.priority) }}</td>
+          <td>{{ task.updated_at.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td class="text-end">
+            <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-sm btn-outline-primary">Modifier</a>
+            <form method="post" action="{{ url_for('tasks.delete_task', task_id=task.id) }}" class="d-inline"
+                  data-confirm="Supprimer cette tâche ?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">Supprimer</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-4">Aucune tâche trouvée.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

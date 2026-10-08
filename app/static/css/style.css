@@ -1,0 +1,7 @@
+.sidebar { min-height: calc(100vh - 56px); }
+.sidebar .nav-link { color: #343a40; }
+.sidebar .nav-link.active { background-color: #212529; color: #fff; }
+.stat-card { transition: transform .15s ease, box-shadow .15s ease; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .1); }
+.auth-card { margin-top: 3rem; }
+.task-desc { max-width: 420px; }

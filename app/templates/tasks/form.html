@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifier la tâche' if task else 'Nouvelle tâche' }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">{{ 'Modifier la tâche' if task else 'Nouvelle tâche' }}</h1>
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form method="post" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label for="title" class="form-label">Titre</label>
+        <input type="text" class="form-control" id="title" name="title" maxlength="120" value="{{ values.get('title', '') }}" required>
+      </div>
+      <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="4" maxlength="2000">{{ values.get('description', '') }}</textarea>
+      </div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label for="status" class="form-label">Statut</label>
+          <select class="form-select" id="status" name="status">
+            {% for value, label in STATUS_CHOICES %}
+            <option value="{{ value }}" {{ 'selected' if value == values.get('status') }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="priority" class="form-label">Priorité</label>
+          <select class="form-select" id="priority" name="priority">
+            {% for value, label in PRIORITY_CHOICES %}
+            <option value="{{ value }}" {{ 'selected' if value == values.get('priority') }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-outline-secondary">Annuler</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

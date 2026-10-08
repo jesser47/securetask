@@ -1,0 +1,9 @@
+{% macro status_badge(value) -%}
+{%- set colors = {'TODO': 'secondary', 'IN_PROGRESS': 'primary', 'DONE': 'success'} -%}
+<span class="badge text-bg-{{ colors.get(value, 'secondary') }}">{{ value|status_label }}</span>
+{%- endmacro %}
+
+{% macro priority_badge(value) -%}
+{%- set colors = {'LOW': 'info', 'MEDIUM': 'warning', 'HIGH': 'danger'} -%}
+<span class="badge text-bg-{{ colors.get(value, 'secondary') }}">{{ value|priority_label }}</span>
+{%- endmacro %}
