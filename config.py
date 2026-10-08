@@ -22,6 +22,6 @@ class Config:
 
 class TestConfig(Config):
     TESTING = True
-    SECRET_KEY = "test-only-not-a-real-secret"
+    SECRET_KEY = secrets.token_hex(32)
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED = False
