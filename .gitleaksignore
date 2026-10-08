@@ -1,0 +1,2 @@
+# Faux positif: mot de passe factice des tests (tests/conftest.py), aucune valeur reelle.
+674ec8a865a5b8c88b789107cdb4b430f31dc3bf:tests/conftest.py:generic-api-key:8
