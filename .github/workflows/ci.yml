@@ -13,92 +13,211 @@ env:
   GITLEAKS_VERSION: "8.30.1"
 
 jobs:
+
+  # ============================================================
+  # 1. SECRET SCANNING
+  # ============================================================
   secrets_scan:
     name: secrets_scan (Gitleaks)
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # historique complet
+          fetch-depth: 0
+
       - name: Install Gitleaks
         run: |
           curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
-      - name: Scan full git history (bloquant)
-        run: ./gitleaks git --redact --verbose --report-format json --report-path gitleaks-report.json
-      - uses: actions/upload-artifact@v4
+
+      - name: Scan full git history
+        run: |
+          ./gitleaks git \
+            --redact \
+            --verbose \
+            --report-format json \
+            --report-path gitleaks-report.json
+
+      - name: Upload Gitleaks report
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: gitleaks-report
           path: gitleaks-report.json
           if-no-files-found: ignore
 
+
+  # ============================================================
+  # 2. SAST - BANDIT
+  # ============================================================
   sast_bandit:
     name: sast (Bandit)
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install bandit
-      - name: Rapport complet (toutes sévérités)
-        run: bandit -r app config.py run.py -f json -o bandit-report.json --exit-zero
-      - name: Gate Bandit (bloque si sévérité HIGH)
-        run: bandit -r app config.py run.py -lll
-      - uses: actions/upload-artifact@v4
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Generate Bandit report
+        run: |
+          bandit \
+            -r app config.py run.py \
+            -f json \
+            -o bandit-report.json \
+            --exit-zero
+
+      - name: Bandit security gate
+        run: |
+          bandit \
+            -r app config.py run.py \
+            -lll
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: bandit-report
           path: bandit-report.json
 
+
+  # ============================================================
+  # 3. SAST - SEMGREP
+  # ============================================================
   sast_semgrep:
     name: sast (Semgrep)
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install semgrep
-      - name: Semgrep (bloque sur sévérité ERROR)
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Semgrep security gate
         run: >
           semgrep scan
-          --config p/python --config p/flask --config p/owasp-top-ten
-          --metrics off --severity ERROR --error
-          --json --output semgrep-report.json
+          --config p/python
+          --config p/flask
+          --config p/owasp-top-ten
+          --metrics off
+          --severity ERROR
+          --error
+          --json
+          --output semgrep-report.json
           app config.py run.py
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload Semgrep report
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: semgrep-report
           path: semgrep-report.json
           if-no-files-found: ignore
 
-  test:
+
+  # ============================================================
+  # 4. SCA - TRIVY
+  # ============================================================
+  sca_trivy:
+    name: sca (Trivy)
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: json
+          output: trivy-fs-report.json
+          exit-code: 1
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-fs-report
+          path: trivy-fs-report.json
+          if-no-files-found: ignore
+
+
+  # ============================================================
+  # 5. UNIT TESTS
+  # ============================================================
+  test:
+    name: tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-dev.txt
-      - run: pip install -r requirements-dev.txt
-      - run: pytest
 
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest
+
+
+  # ============================================================
+  # 6. DOCKER BUILD
+  # ============================================================
   build-image:
+    name: build Docker image
     runs-on: ubuntu-latest
-    needs: [secrets_scan, sast_bandit, sast_semgrep, test]
+
+    needs:
+      - secrets_scan
+      - sast_bandit
+      - sast_semgrep
+      - sca_trivy
+      - test
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Build Docker image
-        run: docker build -t securetask:${{ github.sha }} .
-      - name: Smoke test (health endpoint)
         run: |
-          docker run -d --name securetask -p 5000:5000 securetask:${{ github.sha }}
+          docker build \
+            -t securetask:${{ github.sha }} \
+            .
+
+      - name: Smoke test
+        run: |
+          docker run -d \
+            --name securetask \
+            -p 5000:5000 \
+            securetask:${{ github.sha }}
+
           for i in $(seq 1 15); do
-            curl -fsS http://localhost:5000/health && exit 0
+            if curl -fsS http://localhost:5000/health; then
+              echo "Application is healthy."
+              exit 0
+            fi
+
             sleep 2
           done
+
+          echo "Application failed health check."
           docker logs securetask
           exit 1
